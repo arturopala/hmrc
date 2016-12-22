@@ -18,7 +18,9 @@ class Shop[Item, Price: Numeric] {
         def checkout(items: List[Item]): Either[CheckoutFailure, Bill] = {
 
             val result: Either[Set[Item], List[Entry]] = {
+
                 val entries: List[(Item, Option[Price])] = items.map(item => (item, priceOf(item)))
+
                 val successes: List[Entry] = entries.collect { case (i, Some(p)) => (i, p) }
                 if (successes.size == entries.size) {
                     Right(successes)
@@ -44,7 +46,9 @@ class Shop[Item, Price: Numeric] {
     object Offers {
 
         private[this] def is(item: Item)(entry: Entry) = entry._1 == item
+
         private[this] def free(entry: Entry): Entry = (entry._1, op.zero)
+        
         private[this] def discount(n: Int)(entries: List[Entry]): List[Entry] = {
             val (a, b) = entries.splitAt(entries.size - n)
             a ++ b.map(free)
