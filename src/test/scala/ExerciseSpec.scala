@@ -24,6 +24,15 @@ class SomeSpec extends WordSpecLike with Matchers with PropertyChecks with Insid
 
         val cashdesk = new Cashdesk(pricelist.get)
 
+        "sum total price of items" in {
+            forAll(appleListGen, orangeListGen) {
+                (apples, oranges) =>
+                    val entries = (apples ++ oranges).map(i => (i, pricelist(i)))
+                    val total = cashdesk.sumTotal(entries)
+                    total shouldBe (apples.size * pricelist(Apple) + oranges.size * pricelist(Orange))
+            }
+        }
+
         "checkout empty list of items" in {
             val items = List()
             inside(cashdesk.checkout(items)) {
@@ -89,22 +98,22 @@ class SomeSpec extends WordSpecLike with Matchers with PropertyChecks with Insid
 
         "add free apple for one existing" in {
             val entries: List[Entry] = List((Apple, 0.60))
-            Offers.buyOneGetOneFree(Apple)(entries, 125) shouldBe (List((Apple, 0.60), (Apple, 0)), 125)
+            Offers.buyOneGetOneFree(Apple)(entries) shouldBe List((Apple, 0.60), (Apple, 0))
         }
 
         "add free apple for each one existing" in {
             val entries: List[Entry] = List((Apple, 0.60), (Apple, 0.60))
-            Offers.buyOneGetOneFree(Apple)(entries, 125) shouldBe (List((Apple, 0.60), (Apple, 0.60), (Apple, 0), (Apple, 0)), 125)
+            Offers.buyOneGetOneFree(Apple)(entries) shouldBe List((Apple, 0.60), (Apple, 0.60), (Apple, 0), (Apple, 0))
         }
 
         "add free apple for each one existing but not for orange" in {
             val entries: List[Entry] = List((Apple, 0.60), (Orange, 0.25), (Apple, 0.60))
-            Offers.buyOneGetOneFree(Apple)(entries, 125) shouldBe (List((Apple, 0.60), (Orange, 0.25), (Apple, 0.60), (Apple, 0), (Apple, 0)), 125)
+            Offers.buyOneGetOneFree(Apple)(entries) shouldBe List((Apple, 0.60), (Orange, 0.25), (Apple, 0.60), (Apple, 0), (Apple, 0))
         }
 
         "return unmodified if don't contain apples" in {
             val entries: List[Entry] = List((Orange, 0.25))
-            Offers.buyOneGetOneFree(Apple)(entries, 125) shouldBe (List((Orange, 0.25)), 125)
+            Offers.buyOneGetOneFree(Apple)(entries) shouldBe List((Orange, 0.25))
         }
     }
 
@@ -112,27 +121,25 @@ class SomeSpec extends WordSpecLike with Matchers with PropertyChecks with Insid
 
         "not discount when number of items less then threshold" in {
             val entries: List[Entry] = List((Orange, 0.25), (Orange, 0.25))
-            Offers.nItemsForThePriceOfM(Orange, 3, 2)(entries, 2) shouldBe (List((Orange, 0.25), (Orange, 0.25)), 0.5)
+            Offers.nItemsForThePriceOfM(Orange, 3, 2)(entries) shouldBe List((Orange, 0.25), (Orange, 0.25))
         }
 
         "discount third orange and recalculate price" in {
             val entries: List[Entry] = List((Orange, 0.25), (Orange, 0.25), (Orange, 0.25))
-            Offers.nItemsForThePriceOfM(Orange, 3, 2)(entries, 0.75) shouldBe (List((Orange, 0.25), (Orange, 0.25), (Orange, 0)), 0.5)
+            Offers.nItemsForThePriceOfM(Orange, 3, 2)(entries) shouldBe List((Orange, 0.25), (Orange, 0.25), (Orange, 0))
         }
 
         "discount each third orange" in {
             val entries: List[Entry] = List((Orange, 0.25), (Orange, 0.25), (Orange, 0.25), (Orange, 0.25), (Orange, 0.25))
-            Offers.nItemsForThePriceOfM(Orange, 3, 2)(entries, 0) shouldBe (List((Orange, 0.25), (Orange, 0.25), (Orange, 0), (Orange, 0.25), (Orange, 0.25)), 1.0)
+            Offers.nItemsForThePriceOfM(Orange, 3, 2)(entries) shouldBe List((Orange, 0.25), (Orange, 0.25), (Orange, 0), (Orange, 0.25), (Orange, 0.25))
         }
 
         "not change number of entries and recalculate price" in {
             forAll(appleListGen, orangeListGen) {
                 (apples, oranges) =>
                     val entries = (apples ++ oranges).map(i => (i, pricelist(i)))
-                    val (modified, total) = Offers.nItemsForThePriceOfM(Orange, 3, 2)(entries, 0)
+                    val modified = Offers.nItemsForThePriceOfM(Orange, 3, 2)(entries)
                     modified.size shouldBe entries.size
-                    val o = (oranges.size - op.toInt(oranges.size / 3))
-                    total shouldBe (o * pricelist(Orange) + apples.size * pricelist(Apple))
             }
         }
     }

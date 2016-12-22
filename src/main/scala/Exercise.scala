@@ -4,16 +4,16 @@ class Shop[Item, Price: Numeric] {
 
     type PriceList = Item => Option[Price]
     type Entry = (Item, Price)
-    type SpecialOffer = (List[Entry], Price) => (List[Entry], Price)
+    type SpecialOffer = List[Entry] => List[Entry]
 
     case class Bill(entries: List[Entry], total: Price)
     case class CheckoutFailure(issues: Set[Item], items: List[Item])
 
     val op = implicitly[Numeric[Price]]
 
-    def sumTotal(entries: List[Entry]): Price = entries.map(_._2).foldLeft(op.zero)(op.plus)
+    class Cashdesk(priceOf: PriceList, applyOffer: SpecialOffer = identity) {
 
-    class Cashdesk(priceOf: PriceList, applyOffer: SpecialOffer = (e, t) => (e, t)) {
+        def sumTotal(entries: List[Entry]): Price = entries.map(_._2).foldLeft(op.zero)(op.plus)
 
         def checkout(items: List[Item]): Either[CheckoutFailure, Bill] = {
 
@@ -33,8 +33,8 @@ class Shop[Item, Price: Numeric] {
 
             result match {
                 case Right(entries) =>
-                    val (es, t) = applyOffer(entries, sumTotal(entries))
-                    Right(Bill(es, t))
+                    val modEntries = applyOffer(entries)
+                    Right(Bill(modEntries, sumTotal(modEntries)))
 
                 case Left(issues) =>
                     Left(CheckoutFailure(issues, items))
@@ -48,26 +48,26 @@ class Shop[Item, Price: Numeric] {
         private[this] def is(item: Item)(entry: Entry) = entry._1 == item
 
         private[this] def free(entry: Entry): Entry = (entry._1, op.zero)
-        
+
         private[this] def discount(n: Int)(entries: List[Entry]): List[Entry] = {
             val (a, b) = entries.splitAt(entries.size - n)
             a ++ b.map(free)
         }
 
         def buyOneGetOneFree(item: Item): SpecialOffer =
-            (entries: List[Entry], total: Price) => {
+            (entries: List[Entry]) => {
                 val freeEntries = entries.filter(is(item)).map(free)
-                (entries ++ freeEntries, total)
+                entries ++ freeEntries
             }
 
         def nItemsForThePriceOfM(item: Item, n: Int, m: Int): SpecialOffer = {
             require(m > 0, "number of discounted items must be greater than 0")
             require(m < n, "item's group size must be larger than number of discounted items")
-            (entries: List[Entry], total: Price) => {
+
+            (entries: List[Entry]) => {
                 val (eligible, others) = entries.partition(is(item))
                 val discounted = eligible.grouped(n).map(g => if (g.size < n) g else discount(n - m)(g)).flatten.toList
-                val all = discounted ++ others
-                (all, sumTotal(all))
+                discounted ++ others
             }
         }
 
