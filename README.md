@@ -1,3 +1,6 @@
+HMRC exercice
+=============
+
 ## run tests
 `sbt test`
 
