@@ -1,4 +1,4 @@
-HMRC exercice
+HMRC exercise
 =============
 
 ## run tests
