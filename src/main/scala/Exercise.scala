@@ -6,14 +6,15 @@ class Shop[Item, Price: Numeric] {
     type Entry = (Item, Price)
     type SpecialOffer = List[Entry] => List[Entry]
 
-    case class Bill(entries: List[Entry], total: Price)
-    case class CheckoutFailure(issues: Set[Item], items: List[Item])
-
     val op = implicitly[Numeric[Price]]
 
-    class Cashdesk(priceOf: PriceList, applyOffer: SpecialOffer = identity) {
+    case class CheckoutFailure(issues: Set[Item], items: List[Item])
 
-        def sumTotal(entries: List[Entry]): Price = entries.map(_._2).foldLeft(op.zero)(op.plus)
+    case class Bill(entries: List[Entry]) {
+        lazy val total: Price = entries.map(_._2).foldLeft(op.zero)(op.plus)
+    }
+
+    class Cashdesk(priceOf: PriceList, applyOffer: SpecialOffer = identity) {
 
         def checkout(items: List[Item]): Either[CheckoutFailure, Bill] = {
 
@@ -34,7 +35,7 @@ class Shop[Item, Price: Numeric] {
             result match {
                 case Right(entries) =>
                     val modEntries = applyOffer(entries)
-                    Right(Bill(modEntries, sumTotal(modEntries)))
+                    Right(Bill(modEntries))
 
                 case Left(issues) =>
                     Left(CheckoutFailure(issues, items))
@@ -46,7 +47,6 @@ class Shop[Item, Price: Numeric] {
     object Offers {
 
         private[this] def is(item: Item)(entry: Entry) = entry._1 == item
-
         private[this] def free(entry: Entry): Entry = (entry._1, op.zero)
 
         private[this] def discount(n: Int)(entries: List[Entry]): List[Entry] = {

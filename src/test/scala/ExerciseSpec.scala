@@ -28,7 +28,7 @@ class SomeSpec extends WordSpecLike with Matchers with PropertyChecks with Insid
             forAll(appleListGen, orangeListGen) {
                 (apples, oranges) =>
                     val entries = (apples ++ oranges).map(i => (i, pricelist(i)))
-                    val total = cashdesk.sumTotal(entries)
+                    val total = entries.map(_._2).foldLeft(op.zero)(op.plus)
                     total shouldBe (apples.size * pricelist(Apple) + oranges.size * pricelist(Orange))
             }
         }
@@ -36,8 +36,8 @@ class SomeSpec extends WordSpecLike with Matchers with PropertyChecks with Insid
         "checkout empty list of items" in {
             val items = List()
             inside(cashdesk.checkout(items)) {
-                case Right(Bill(entries, total)) =>
-                    total shouldBe 0
+                case Right(bill @ Bill(entries)) =>
+                    bill.total shouldBe 0
                     entries should have size (0)
                 case Left(CheckoutFailure(issues, items)) => fail
             }
@@ -46,8 +46,8 @@ class SomeSpec extends WordSpecLike with Matchers with PropertyChecks with Insid
         "checkout list of known items" in {
             val items = List(Apple, Orange)
             inside(cashdesk.checkout(items)) {
-                case Right(Bill(entries, total)) =>
-                    total shouldBe 0.85
+                case Right(bill @ Bill(entries)) =>
+                    bill.total shouldBe 0.85
                     entries should have size (2)
                 case Left(CheckoutFailure(issues, items)) => fail
             }
@@ -59,7 +59,7 @@ class SomeSpec extends WordSpecLike with Matchers with PropertyChecks with Insid
                 case Left(CheckoutFailure(issues, items)) =>
                     issues shouldBe Set(Banana)
                     items should have size (3)
-                case Right(Bill(entries, total)) => fail
+                case Right(Bill(entries)) => fail
             }
         }
 
@@ -68,8 +68,8 @@ class SomeSpec extends WordSpecLike with Matchers with PropertyChecks with Insid
                 (apples, oranges) =>
                     val items = apples ++ oranges
                     inside(cashdesk.checkout(items)) {
-                        case Right(Bill(entries, total)) =>
-                            total shouldBe (apples.size * pricelist(Apple) + oranges.size * pricelist(Orange))
+                        case Right(bill @ Bill(entries)) =>
+                            bill.total shouldBe (apples.size * pricelist(Apple) + oranges.size * pricelist(Orange))
                             entries should have size (apples.size + oranges.size)
                         case Left(CheckoutFailure(issues, items)) => fail
                     }
@@ -86,7 +86,7 @@ class SomeSpec extends WordSpecLike with Matchers with PropertyChecks with Insid
                                 issues should contain(Banana)
                                 for (other <- others) issues should contain(other)
                                 items should have size (apples.size + oranges.size + bananas.size + others.size)
-                            case Right(Bill(entries, total)) => fail
+                            case Right(Bill(entries)) => fail
                         }
                     }
             }
